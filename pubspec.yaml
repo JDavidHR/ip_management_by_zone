@@ -46,6 +46,7 @@ flutter:
     - lib/json_files/pass_rg.json
     - lib/json_files/pass_herramientas.json
     - lib/json_files/user.json
+    - lib/json_files/login_registration.json
     - assets/lottie/agent_business.json
     - assets/lottie/download_animation.json
     - assets/lottie/check.json
