@@ -1,0 +1,71 @@
+[
+    {
+        "Risaralda": "spmcrda"
+    },
+    {
+        "Quindio": "spmcqnd"
+    },
+    {
+        "Valle": "spmcval"
+    },
+    {
+        "Caldas": "spmccld"
+    },
+    {
+        "Antioquia": "spmcant"
+    },
+    {
+        "Arauca": "spmcara"
+    },
+    {
+        "Atlantico": "spmcatl"
+    },
+    {
+        "Cundinamarca": "spmccun"
+    },
+    {
+        "Bolivar": "spmcbol"
+    },
+    {
+        "Boyaca": "spmcboy"
+    },
+    {
+        "Cauca": "spmccau"
+    },
+    {
+        "Cordoba": "spmccor"
+    },
+    {
+        "Huila-neiva": "spmchlta"
+    },
+    {
+        "Nariño": "spmcnar"
+    },
+    {
+        "Santander": "spmcsan"
+    },
+    {
+        "N.Santander": "spmcnsa"
+    },
+    {
+        "Inalmabricos": "spmcces"
+    },
+    {
+        "Casanare-yopal": "spmccas"
+    },
+    {
+        "Sucre": "spmcsuc"
+    },
+    {
+        "Villavicencio": "spmcmet"
+    },
+    {
+        "Tolima": "spmctol"
+    },
+    {
+        "PUERTO CARREÑO": "spmcvic"
+    },
+    {
+        "Amazonas": "pmcama"
+    }
+]

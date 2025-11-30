@@ -1,0 +1,78 @@
+{
+    "Equipos L3": [
+        {
+            "VENDOR": "CISCO",
+            "REFERENCIA": "1841",
+            "CAPACIDAD": "Hasta 35 Mbps",
+            "ESTADO": "En Producción",
+            "CONVERSOR": "Transceiver",
+            "REF_TRANSCEIVER": "VKS 100-25"
+        },
+        {
+            "VENDOR": "CISCO",
+            "REFERENCIA": "1941",
+            "CAPACIDAD": "Hasta 150 Mbps",
+            "ESTADO": "En Producción",
+            "CONVERSOR": "Transceiver",
+            "REF_TRANSCEIVER": "VKS 100-25 // VKSF1100-20A"
+        },
+        {
+            "VENDOR": "CISCO",
+            "REFERENCIA": "2801",
+            "CAPACIDAD": "Hasta 45 Mbps",
+            "ESTADO": "En Producción",
+            "CONVERSOR": "Transceiver",
+            "REF_TRANSCEIVER": ""
+        },
+        {
+            "VENDOR": "CISCO",
+            "REFERENCIA": "2811",
+            "CAPACIDAD": "Hasta 61 Mbps",
+            "ESTADO": "En Producción",
+            "CONVERSOR": "Transceiver",
+            "REF_TRANSCEIVER": ""
+        },
+        {
+            "VENDOR": "JUNIPER",
+            "REFERENCIA": "ACX 2200",
+            "CAPACIDAD": "Hasta 10 Gbps",
+            "ESTADO": "En Producción",
+            "CONVERSOR": "SFP+",
+            "REF_TRANSCEIVER": "SFP-10G-BX10U OSI SMF TX1270NM o SFP-10G40KT13R12 OSI"
+        }
+    ],
+    "Equipos L2": [
+        {
+            "VENDOR": "Allied Telesys",
+            "REFERENCIA": "iMG1425",
+            "CAPACIDAD": "Hasta 300 Mbps",
+            "ESTADO": "En Producción",
+            "CONVERSOR": "SFP",
+            "REF_TRANSCEIVER": "SFP 20KM 100/1000 BIDI"
+        },
+        {
+            "VENDOR": "Raisecom",
+            "REFERENCIA": "Iscom 2608G",
+            "CAPACIDAD": "Hasta 700 Mbps",
+            "ESTADO": "En Producción",
+            "CONVERSOR": "SFP",
+            "REF_TRANSCEIVER": "SFP USFP GB/SS13-D-R RAISECOM 1.25G o SFP USFP GB/SS13-D-R RINCON 1.25G"
+        }
+    ],
+    "Conversores": [
+        {
+            "FABRICANTE": "OPTONE",
+            "REFERENCIA": "OPT-1202S25",
+            "CAPA_DE_RED": "CAPA2",
+            "DIMENSION": "",
+            "CAPACIDAD": "Hasta 100Mbps"
+        },
+        {
+            "FABRICANTE": "V-KOM",
+            "REFERENCIA": "VKS-1100-20A",
+            "CAPA_DE_RED": "CAPA2",
+            "DIMENSION": "",
+            "CAPACIDAD": "Hasta 1Gbps"
+        }
+    ]
+}

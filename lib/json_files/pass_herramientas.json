@@ -1,0 +1,52 @@
+{
+    "CPEs MEDIA COMMERCE": [
+        {
+            "equipo": "GENERICO",
+            "user": "SoporteMC",
+            "password1": "$0p0rt3.m3d14",
+            "password2": "S0p0rt3.m3d14",
+            "password3": "",
+            "password4": "",
+            "password5": "",
+            "password6": "",
+            "password7": "",
+            "password8": ""
+        },
+        {
+            "equipo": "CISCO - BDCOM",
+            "user": "enable\r",
+            "password1": "$0p0rt3.n4l.mc",
+            "password2": "n0c**$0p0rt3",
+            "password3": "n0c**$0p0rt3.n4l.mc",
+            "password4": "SwMC_tac$$",
+            "password5": "raisecom",
+            "password6": "S0p0rt3.M3d14",
+            "url": ""
+        },
+        {
+            "equipo": "RAISECOM",
+            "user": "enable\r",
+            "password1": "$0p0rt3.n4l.mc",
+            "password2": "n0c**$0p0rt3",
+            "password3": "n0c**$0p0rt3.n4l.mc",
+            "password4": "SwMC_tac$$",
+            "password5": "raisecom",
+            "password6": "S0p0rt3.M3d14",
+            "url": ""
+        }
+    ],
+    "MONITOREO": [
+        {
+            "equipo": "CACTI",
+            "user": "CG",
+            "password": ".:m0nitore0:.",
+            "url": "http://mrtg.mediacommerce.co/cacti/"
+        },
+        {
+            "equipo": "ORION - SolarWinds (Local)",
+            "user": "cgestioncoor",
+            "password": "¡cgestion.MC21!",
+            "url": "https://monitoreo.mediacommerce.net.co/"
+        }
+    ]
+}
