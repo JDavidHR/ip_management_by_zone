@@ -24,6 +24,9 @@ class _TableCoffeeRegionAreaState extends State<TableCoffeeRegionArea> {
     _loadExcel();
   }
 
+  // ======================================================
+  //    CARGAR EXCEL
+  // ======================================================
   Future<void> _loadExcel() async {
     ByteData data = await rootBundle.load("assets/bd_local/tabla_zonas.xlsx");
     var bytes = data.buffer.asUint8List();
@@ -42,11 +45,6 @@ class _TableCoffeeRegionAreaState extends State<TableCoffeeRegionArea> {
     // Filas
     for (int i = 1; i < sheet.rows.length; i++) {
       Map<String, String> row = {};
-
-      // for (int j = 0; j < _headers.length; j++) {
-      //   var cell = sheet.rows[i][j];
-      //   row[_headers[j]] = cell?.value?.toString() ?? "";
-      // }
 
       for (int j = 0; j < _headers.length; j++) {
         var cell = sheet.rows[i][j];
@@ -67,30 +65,74 @@ class _TableCoffeeRegionAreaState extends State<TableCoffeeRegionArea> {
     setState(() {
       _data = rows;
       _filteredData = rows;
-      _isLoading = false; // <- YA CARGÓ
+      _isLoading = false;
     });
   }
 
+  // ======================================================
+  //    FILTRO DE BÚSQUEDA
+  // ======================================================
   void _filterTable(String query) {
     query = query.toLowerCase();
 
     setState(() {
       _filteredData = _data.where((row) {
-        return row.values.any((value) {
-          return value.toLowerCase().contains(query);
-        });
+        return row.values.any(
+          (value) => value.toLowerCase().contains(query),
+        );
       }).toList();
     });
   }
 
+  // ======================================================
+  //    MOSTRAR ESTADÍSTICAS DE IP
+  // ======================================================
+  void _showIpStats() {
+    int total = _data.length;
+
+    int disponibles = _data.where((row) {
+      String cliente = row["Clientes"]?.trim() ?? "";
+      return cliente.isEmpty; // cliente vacío = IP libre
+    }).length;
+
+    int ocupadas = total - disponibles;
+
+    showDialog(
+      context: context,
+      builder: (_) {
+        return AlertDialog(
+          title: const Text("Estado de la tabla"),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text("IP totales: $total"),
+              Text("IP disponibles: $disponibles"),
+              Text("IP ocupadas: $ocupadas"),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text("Cerrar"),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  // ======================================================
+  //    UI PRINCIPAL
+  // ======================================================
   @override
   Widget build(BuildContext context) {
-    // ========= LOADING ==========
+    // ===== LOADING =====
     if (_isLoading) {
       return const Center(child: CircularProgressIndicator());
     }
 
-    // ========= SIN COLUMNAS (evita error) ==========
+    // ===== ERROR: SIN HEADERS =====
     if (_headers.isEmpty) {
       return const Center(
         child: Text(
@@ -103,25 +145,51 @@ class _TableCoffeeRegionAreaState extends State<TableCoffeeRegionArea> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // ===== Buscador =====
-        SizedBox(
-          width: 400,
-          child: TextField(
-            controller: _filterController,
-            decoration: InputDecoration(
-              hintText: "Buscar...",
-              prefixIcon: const Icon(Icons.search),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(8),
+        // ======================================================
+        //    BUSCADOR + BOTONES
+        // ======================================================
+        Row(
+          children: [
+            // ==== BUSCADOR ====
+            SizedBox(
+              width: 400,
+              child: TextField(
+                controller: _filterController,
+                decoration: InputDecoration(
+                  hintText: "Buscar...",
+                  prefixIcon: const Icon(Icons.search),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+                onChanged: _filterTable,
               ),
             ),
-            onChanged: _filterTable,
-          ),
+
+            const SizedBox(width: 20),
+
+            // ==== BOTÓN: VER IP DISPONIBLES ====
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.blue,
+                foregroundColor: Colors.white,
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+              onPressed: _showIpStats,
+              child: const Text("Estado de la tabla"),
+            ),
+          ],
         ),
 
         const SizedBox(height: 20),
 
-        // ===== TABLA =====
+        // ======================================================
+        //    TABLA
+        // ======================================================
         Expanded(
           child: Container(
             padding: const EdgeInsets.all(8),
