@@ -15,31 +15,17 @@ class _TableCoffeeRegionAreaState extends State<TableCoffeeRegionArea> {
   List<String> _headers = [];
 
   bool _isLoading = true;
-  bool _showOnlyAvailable = false; // toggle para mostrar solo IP disponibles
 
   final TextEditingController _filterController = TextEditingController();
 
-  // clave detectada de la columna cliente (por ejemplo: "Clientes")
-  String? _clienteKey;
+  bool _showOnlyAvailable = false; // PARA MOSTRAR SOLO IP DISPONIBLES
 
   @override
   void initState() {
     super.initState();
     _loadExcel();
-    _filterController.addListener(() {
-      _applyFilters();
-    });
   }
 
-  @override
-  void dispose() {
-    _filterController.dispose();
-    super.dispose();
-  }
-
-  // ======================================================
-  //    CARGAR EXCEL
-  // ======================================================
   Future<void> _loadExcel() async {
     ByteData data = await rootBundle.load("assets/bd_local/tabla_zonas.xlsx");
     var bytes = data.buffer.asUint8List();
@@ -55,23 +41,15 @@ class _TableCoffeeRegionAreaState extends State<TableCoffeeRegionArea> {
       return (cell?.value?.toString() ?? "").trim();
     }).toList();
 
-    // detectar la columna cliente (insensible a mayúsculas/minúsculas)
-    _clienteKey = _headers.firstWhere(
-      (h) => h.toLowerCase().contains('cliente'),
-      orElse: () => '',
-    );
-    if (_clienteKey == '') _clienteKey = null;
-
     // Filas
     for (int i = 1; i < sheet.rows.length; i++) {
       Map<String, String> row = {};
 
       for (int j = 0; j < _headers.length; j++) {
         var cell = sheet.rows[i][j];
-
         String value = cell?.value?.toString() ?? "";
 
-        // Convertir "6.0" → "6"
+        // Convertir 6.0 → 6
         if (value.endsWith(".0")) {
           value = value.replaceAll(".0", "");
         }
@@ -89,89 +67,97 @@ class _TableCoffeeRegionAreaState extends State<TableCoffeeRegionArea> {
     });
   }
 
-  // ======================================================
-  //    FILTROS (búsqueda + toggle disponibles)
-  // ======================================================
-  void _applyFilters() {
-    final query = _filterController.text.toLowerCase();
+  void _filterTable(String query) {
+    query = query.toLowerCase();
 
-    List<Map<String, String>> temp = _data.where((row) {
-      if (query.isEmpty) return true;
-      return row.values.any((value) => value.toLowerCase().contains(query));
-    }).toList();
-
-    if (_showOnlyAvailable) {
-      if (_clienteKey != null) {
-        temp = temp.where((row) {
-          final cliente = (row[_clienteKey!] ?? "").trim();
-          return cliente.isEmpty;
-        }).toList();
-      } else {
-        // si no detecta columna cliente, no filtra (evita crash)
-      }
-    }
+    List<Map<String, String>> baseList =
+        _showOnlyAvailable ? _onlyAvailableList() : _data;
 
     setState(() {
-      _filteredData = temp;
+      _filteredData = baseList.where((row) {
+        return row.values.any((value) {
+          return value.toLowerCase().contains(query);
+        });
+      }).toList();
     });
   }
 
-  void _filterTable(String _) {
-    // el listener del controller ya llama _applyFilters(), pero mantenemos compatibilidad
-    _applyFilters();
+  // Obtener lista de IP disponibles (cliente vacío)
+  List<Map<String, String>> _onlyAvailableList() {
+    String clienteHeader = _headers.firstWhere(
+      (h) => h.toLowerCase().contains("cliente"),
+      orElse: () => "",
+    );
+
+    if (clienteHeader.isEmpty) return _data;
+
+    return _data.where((row) {
+      return (row[clienteHeader] ?? "").trim().isEmpty;
+    }).toList();
   }
 
-  // ======================================================
-  //    TOGGLE: mostrar solo IP disponibles / mostrar todo
-  // ======================================================
-  void _toggleAvailableIPs() {
+  // BOTÓN PARA MOSTRAR SOLO IP DISPONIBLES
+  void _toggleAvailableFilter() {
     setState(() {
       _showOnlyAvailable = !_showOnlyAvailable;
-      _applyFilters();
+
+      if (_showOnlyAvailable) {
+        _filteredData = _onlyAvailableList();
+      } else {
+        _filteredData = _data;
+      }
     });
   }
 
-  // ======================================================
-  //    MOSTRAR ESTADÍSTICAS DE IP
-  // ======================================================
-  void _showIPStats() {
+  // DIALOGO DE RESUMEN DE IPS
+  void _showIpSummaryDialog() {
+    String clienteHeader = _headers.firstWhere(
+      (h) => h.toLowerCase().contains("cliente"),
+      orElse: () => "",
+    );
+
+    if (clienteHeader.isEmpty) return;
+
     int total = _data.length;
-    int disponibles = 0;
-    if (_clienteKey != null) {
-      disponibles =
-          _data.where((row) => (row[_clienteKey!] ?? "").trim().isEmpty).length;
-    } else {
-      // si no hay columna cliente, consideramos 0 disponibles
-      disponibles = 0;
-    }
+    int disponibles = _data.where((row) {
+      return (row[clienteHeader] ?? "").trim().isEmpty;
+    }).length;
+
     int ocupadas = total - disponibles;
 
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text("Estadísticas de IP"),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text("IP Totales: $total"),
-            Text("IP Disponibles: $disponibles"),
-            Text("IP Ocupadas: $ocupadas"),
+      builder: (context) {
+        return AlertDialog(
+          title: const Text("Resumen de IP"),
+          content: Text(
+            "IP totales: $total\n"
+            "IP disponibles: $disponibles\n"
+            "IP ocupadas: $ocupadas",
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text("Cerrar"),
+            ),
           ],
-        ),
-        actions: [
-          TextButton(
-            child: const Text("Cerrar"),
-            onPressed: () => Navigator.pop(context),
-          )
-        ],
+        );
+      },
+    );
+  }
+
+  // ==== ESTILOS DE BOTÓN ====
+  ButtonStyle blackButton() {
+    return ElevatedButton.styleFrom(
+      backgroundColor: Colors.black,
+      foregroundColor: Colors.white,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(8), // ← Borde 8px
       ),
     );
   }
 
-  // ======================================================
-  //    UI PRINCIPAL
-  // ======================================================
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
@@ -190,12 +176,11 @@ class _TableCoffeeRegionAreaState extends State<TableCoffeeRegionArea> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // BUSCADOR + BOTONES
+        // ==== BUSCADOR + BOTONES ====
         Row(
           children: [
-            // Buscador
             SizedBox(
-              width: 400,
+              width: 350,
               child: TextField(
                 controller: _filterController,
                 decoration: InputDecoration(
@@ -208,27 +193,26 @@ class _TableCoffeeRegionAreaState extends State<TableCoffeeRegionArea> {
                 onChanged: _filterTable,
               ),
             ),
-            const SizedBox(width: 16),
+            const SizedBox(width: 12),
 
-            // Botón estadísticas
-            ElevatedButton.icon(
-              onPressed: _showIPStats,
-              icon: const Icon(Icons.info_outline),
-              label: const Text("Ver IP disponibles"),
+            // BOTÓN: CONTAR IPS
+            ElevatedButton(
+              onPressed: _showIpSummaryDialog,
+              style: blackButton(),
+              child: const Text("Resumen IP"),
             ),
 
             const SizedBox(width: 12),
 
-            // Toggle mostrar solo disponibles
-            ElevatedButton.icon(
-              onPressed: _toggleAvailableIPs,
-              icon: Icon(
-                  _showOnlyAvailable ? Icons.visibility_off : Icons.visibility),
-              label: Text(_showOnlyAvailable
-                  ? "Mostrar todo"
-                  : "Mostrar solo IP disponibles"),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: _showOnlyAvailable ? Colors.green : null,
+            // BOTÓN: MOSTRAR SOLO DISPONIBLES
+            ElevatedButton(
+              onPressed: () {
+                _toggleAvailableFilter();
+                _filterTable(_filterController.text);
+              },
+              style: blackButton(),
+              child: Text(
+                _showOnlyAvailable ? "Mostrar todo" : "IP disponibles",
               ),
             ),
           ],
@@ -236,7 +220,7 @@ class _TableCoffeeRegionAreaState extends State<TableCoffeeRegionArea> {
 
         const SizedBox(height: 20),
 
-        // TABLA
+        // ==== TABLA ====
         Expanded(
           child: Container(
             padding: const EdgeInsets.all(8),
