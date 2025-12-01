@@ -15,13 +15,26 @@ class _TableCoffeeRegionAreaState extends State<TableCoffeeRegionArea> {
   List<String> _headers = [];
 
   bool _isLoading = true;
+  bool _showOnlyAvailable = false; // toggle para mostrar solo IP disponibles
 
   final TextEditingController _filterController = TextEditingController();
+
+  // clave detectada de la columna cliente (por ejemplo: "Clientes")
+  String? _clienteKey;
 
   @override
   void initState() {
     super.initState();
     _loadExcel();
+    _filterController.addListener(() {
+      _applyFilters();
+    });
+  }
+
+  @override
+  void dispose() {
+    _filterController.dispose();
+    super.dispose();
   }
 
   // ======================================================
@@ -42,6 +55,13 @@ class _TableCoffeeRegionAreaState extends State<TableCoffeeRegionArea> {
       return (cell?.value?.toString() ?? "").trim();
     }).toList();
 
+    // detectar la columna cliente (insensible a mayúsculas/minúsculas)
+    _clienteKey = _headers.firstWhere(
+      (h) => h.toLowerCase().contains('cliente'),
+      orElse: () => '',
+    );
+    if (_clienteKey == '') _clienteKey = null;
+
     // Filas
     for (int i = 1; i < sheet.rows.length; i++) {
       Map<String, String> row = {};
@@ -51,7 +71,7 @@ class _TableCoffeeRegionAreaState extends State<TableCoffeeRegionArea> {
 
         String value = cell?.value?.toString() ?? "";
 
-        // 👉 Convertir "6.0" → "6"
+        // Convertir "6.0" → "6"
         if (value.endsWith(".0")) {
           value = value.replaceAll(".0", "");
         }
@@ -70,55 +90,82 @@ class _TableCoffeeRegionAreaState extends State<TableCoffeeRegionArea> {
   }
 
   // ======================================================
-  //    FILTRO DE BÚSQUEDA
+  //    FILTROS (búsqueda + toggle disponibles)
   // ======================================================
-  void _filterTable(String query) {
-    query = query.toLowerCase();
+  void _applyFilters() {
+    final query = _filterController.text.toLowerCase();
+
+    List<Map<String, String>> temp = _data.where((row) {
+      if (query.isEmpty) return true;
+      return row.values.any((value) => value.toLowerCase().contains(query));
+    }).toList();
+
+    if (_showOnlyAvailable) {
+      if (_clienteKey != null) {
+        temp = temp.where((row) {
+          final cliente = (row[_clienteKey!] ?? "").trim();
+          return cliente.isEmpty;
+        }).toList();
+      } else {
+        // si no detecta columna cliente, no filtra (evita crash)
+      }
+    }
 
     setState(() {
-      _filteredData = _data.where((row) {
-        return row.values.any(
-          (value) => value.toLowerCase().contains(query),
-        );
-      }).toList();
+      _filteredData = temp;
+    });
+  }
+
+  void _filterTable(String _) {
+    // el listener del controller ya llama _applyFilters(), pero mantenemos compatibilidad
+    _applyFilters();
+  }
+
+  // ======================================================
+  //    TOGGLE: mostrar solo IP disponibles / mostrar todo
+  // ======================================================
+  void _toggleAvailableIPs() {
+    setState(() {
+      _showOnlyAvailable = !_showOnlyAvailable;
+      _applyFilters();
     });
   }
 
   // ======================================================
   //    MOSTRAR ESTADÍSTICAS DE IP
   // ======================================================
-  void _showIpStats() {
+  void _showIPStats() {
     int total = _data.length;
-
-    int disponibles = _data.where((row) {
-      String cliente = row["Clientes"]?.trim() ?? "";
-      return cliente.isEmpty; // cliente vacío = IP libre
-    }).length;
-
+    int disponibles = 0;
+    if (_clienteKey != null) {
+      disponibles =
+          _data.where((row) => (row[_clienteKey!] ?? "").trim().isEmpty).length;
+    } else {
+      // si no hay columna cliente, consideramos 0 disponibles
+      disponibles = 0;
+    }
     int ocupadas = total - disponibles;
 
     showDialog(
       context: context,
-      builder: (_) {
-        return AlertDialog(
-          title: const Text("Estado de la tabla"),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text("IP totales: $total"),
-              Text("IP disponibles: $disponibles"),
-              Text("IP ocupadas: $ocupadas"),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text("Cerrar"),
-            ),
+      builder: (context) => AlertDialog(
+        title: const Text("Estadísticas de IP"),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text("IP Totales: $total"),
+            Text("IP Disponibles: $disponibles"),
+            Text("IP Ocupadas: $ocupadas"),
           ],
-        );
-      },
+        ),
+        actions: [
+          TextButton(
+            child: const Text("Cerrar"),
+            onPressed: () => Navigator.pop(context),
+          )
+        ],
+      ),
     );
   }
 
@@ -127,12 +174,10 @@ class _TableCoffeeRegionAreaState extends State<TableCoffeeRegionArea> {
   // ======================================================
   @override
   Widget build(BuildContext context) {
-    // ===== LOADING =====
     if (_isLoading) {
       return const Center(child: CircularProgressIndicator());
     }
 
-    // ===== ERROR: SIN HEADERS =====
     if (_headers.isEmpty) {
       return const Center(
         child: Text(
@@ -145,12 +190,10 @@ class _TableCoffeeRegionAreaState extends State<TableCoffeeRegionArea> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // ======================================================
-        //    BUSCADOR + BOTONES
-        // ======================================================
+        // BUSCADOR + BOTONES
         Row(
           children: [
-            // ==== BUSCADOR ====
+            // Buscador
             SizedBox(
               width: 400,
               child: TextField(
@@ -165,31 +208,35 @@ class _TableCoffeeRegionAreaState extends State<TableCoffeeRegionArea> {
                 onChanged: _filterTable,
               ),
             ),
+            const SizedBox(width: 16),
 
-            const SizedBox(width: 20),
+            // Botón estadísticas
+            ElevatedButton.icon(
+              onPressed: _showIPStats,
+              icon: const Icon(Icons.info_outline),
+              label: const Text("Ver IP disponibles"),
+            ),
 
-            // ==== BOTÓN: VER IP DISPONIBLES ====
-            ElevatedButton(
+            const SizedBox(width: 12),
+
+            // Toggle mostrar solo disponibles
+            ElevatedButton.icon(
+              onPressed: _toggleAvailableIPs,
+              icon: Icon(
+                  _showOnlyAvailable ? Icons.visibility_off : Icons.visibility),
+              label: Text(_showOnlyAvailable
+                  ? "Mostrar todo"
+                  : "Mostrar solo IP disponibles"),
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.blue,
-                foregroundColor: Colors.white,
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
+                backgroundColor: _showOnlyAvailable ? Colors.green : null,
               ),
-              onPressed: _showIpStats,
-              child: const Text("Estado de la tabla"),
             ),
           ],
         ),
 
         const SizedBox(height: 20),
 
-        // ======================================================
-        //    TABLA
-        // ======================================================
+        // TABLA
         Expanded(
           child: Container(
             padding: const EdgeInsets.all(8),
