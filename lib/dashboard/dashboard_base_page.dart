@@ -98,10 +98,10 @@ class TopHeader extends StatelessWidget {
           ),
         ],
       ),
-      child: Row(
+      child: const Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          const Text(
+          Text(
             "Disponibilidad de IP",
             style: TextStyle(
               fontSize: 20,
@@ -112,14 +112,14 @@ class TopHeader extends StatelessWidget {
           Row(
             children: [
               IconButton(
-                onPressed: () {},
+                onPressed: null,
                 icon: const Icon(
                   LucideIcons.bell,
                   color: Colors.white,
                 ),
               ),
               IconButton(
-                onPressed: () {},
+                onPressed: null,
                 icon: const Icon(
                   LucideIcons.settings,
                   color: Colors.white,

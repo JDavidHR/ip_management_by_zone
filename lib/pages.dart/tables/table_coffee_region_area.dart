@@ -15,10 +15,9 @@ class _TableCoffeeRegionAreaState extends State<TableCoffeeRegionArea> {
   List<String> _headers = [];
 
   bool _isLoading = true;
+  bool _showOnlyAvailable = false;
 
   final TextEditingController _filterController = TextEditingController();
-
-  bool _showOnlyAvailable = false; // PARA MOSTRAR SOLO IP DISPONIBLES
 
   @override
   void initState() {
@@ -36,12 +35,10 @@ class _TableCoffeeRegionAreaState extends State<TableCoffeeRegionArea> {
 
     List<Map<String, String>> rows = [];
 
-    // Encabezados
     _headers = sheet.rows.first.map((cell) {
       return (cell?.value?.toString() ?? "").trim();
     }).toList();
 
-    // Filas
     for (int i = 1; i < sheet.rows.length; i++) {
       Map<String, String> row = {};
 
@@ -49,7 +46,6 @@ class _TableCoffeeRegionAreaState extends State<TableCoffeeRegionArea> {
         var cell = sheet.rows[i][j];
         String value = cell?.value?.toString() ?? "";
 
-        // Convertir 6.0 → 6
         if (value.endsWith(".0")) {
           value = value.replaceAll(".0", "");
         }
@@ -69,7 +65,6 @@ class _TableCoffeeRegionAreaState extends State<TableCoffeeRegionArea> {
 
   void _filterTable(String query) {
     query = query.toLowerCase();
-
     List<Map<String, String>> baseList =
         _showOnlyAvailable ? _onlyAvailableList() : _data;
 
@@ -82,52 +77,40 @@ class _TableCoffeeRegionAreaState extends State<TableCoffeeRegionArea> {
     });
   }
 
-  // Obtener lista de IP disponibles (cliente vacío)
   List<Map<String, String>> _onlyAvailableList() {
     String clienteHeader = _headers.firstWhere(
       (h) => h.toLowerCase().contains("cliente"),
       orElse: () => "",
     );
 
-    if (clienteHeader.isEmpty) return _data;
-
     return _data.where((row) {
       return (row[clienteHeader] ?? "").trim().isEmpty;
     }).toList();
   }
 
-  // BOTÓN PARA MOSTRAR SOLO IP DISPONIBLES
   void _toggleAvailableFilter() {
     setState(() {
       _showOnlyAvailable = !_showOnlyAvailable;
-
-      if (_showOnlyAvailable) {
-        _filteredData = _onlyAvailableList();
-      } else {
-        _filteredData = _data;
-      }
+      _filteredData = _showOnlyAvailable ? _onlyAvailableList() : _data;
     });
+
+    _filterTable(_filterController.text);
   }
 
-  // DIALOGO DE RESUMEN DE IPS
   void _showIpSummaryDialog() {
     String clienteHeader = _headers.firstWhere(
       (h) => h.toLowerCase().contains("cliente"),
       orElse: () => "",
     );
 
-    if (clienteHeader.isEmpty) return;
-
     int total = _data.length;
-    int disponibles = _data.where((row) {
-      return (row[clienteHeader] ?? "").trim().isEmpty;
-    }).length;
-
+    int disponibles =
+        _data.where((row) => (row[clienteHeader] ?? "").trim().isEmpty).length;
     int ocupadas = total - disponibles;
 
     showDialog(
       context: context,
-      builder: (context) {
+      builder: (_) {
         return AlertDialog(
           title: const Text("Resumen de IP"),
           content: Text(
@@ -137,8 +120,86 @@ class _TableCoffeeRegionAreaState extends State<TableCoffeeRegionArea> {
           ),
           actions: [
             TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text("Cerrar"))
+          ],
+        );
+      },
+    );
+  }
+
+  ButtonStyle blackButton() {
+    return ElevatedButton.styleFrom(
+      backgroundColor: Colors.black,
+      foregroundColor: Colors.white,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(8),
+      ),
+    );
+  }
+
+  // ===========================================================
+  //  *** DIALOGO PARA EDITAR UNA FILA ***
+  // ===========================================================
+  void _editRow(Map<String, String> row) {
+    Map<String, TextEditingController> controllers = {};
+
+    for (var header in _headers) {
+      controllers[header] = TextEditingController(text: row[header]);
+    }
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text("Editar registro"),
+          content: SizedBox(
+            width: 500,
+            child: SingleChildScrollView(
+              child: Column(
+                children: _headers.map((h) {
+                  bool disabled = h.toLowerCase().contains("vlan") ||
+                      h.toLowerCase().contains("dir. ip");
+
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: TextField(
+                      controller: controllers[h],
+                      enabled: !disabled,
+                      decoration: InputDecoration(
+                        labelText: h,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                    ),
+                  );
+                }).toList(),
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              child: const Text("Cancelar"),
               onPressed: () => Navigator.pop(context),
-              child: const Text("Cerrar"),
+            ),
+            ElevatedButton(
+              style: blackButton(),
+              child: const Text("Guardar"),
+              onPressed: () {
+                setState(() {
+                  // Guardar los cambios en la fila original
+                  for (var h in _headers) {
+                    if (!(h.toLowerCase().contains("vlan") ||
+                        h.toLowerCase().contains("dir. ip"))) {
+                      row[h] = controllers[h]!.text;
+                    }
+                  }
+                });
+
+                Navigator.pop(context);
+              },
             ),
           ],
         );
@@ -146,37 +207,16 @@ class _TableCoffeeRegionAreaState extends State<TableCoffeeRegionArea> {
     );
   }
 
-  // ==== ESTILOS DE BOTÓN ====
-  ButtonStyle blackButton() {
-    return ElevatedButton.styleFrom(
-      backgroundColor: Colors.black,
-      foregroundColor: Colors.white,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(8), // ← Borde 8px
-      ),
-    );
-  }
-
+  // ===========================================================
+  //  *** UI PRINCIPAL ***
+  // ===========================================================
   @override
   Widget build(BuildContext context) {
-    if (_isLoading) {
-      return const Center(child: CircularProgressIndicator());
-    }
-
-    if (_headers.isEmpty) {
-      return const Center(
-        child: Text(
-          "No se pudieron cargar los encabezados de la tabla.",
-          style: TextStyle(color: Colors.red, fontSize: 18),
-        ),
-      );
-    }
+    if (_isLoading) return const Center(child: CircularProgressIndicator());
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // ==== BUSCADOR + BOTONES ====
         Row(
           children: [
             SizedBox(
@@ -187,91 +227,84 @@ class _TableCoffeeRegionAreaState extends State<TableCoffeeRegionArea> {
                   hintText: "Buscar...",
                   prefixIcon: const Icon(Icons.search),
                   border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
+                      borderRadius: BorderRadius.circular(8)),
                 ),
                 onChanged: _filterTable,
               ),
             ),
             const SizedBox(width: 12),
-
-            // BOTÓN: CONTAR IPS
             ElevatedButton(
               onPressed: _showIpSummaryDialog,
               style: blackButton(),
               child: const Text("Resumen IP"),
             ),
-
             const SizedBox(width: 12),
-
-            // BOTÓN: MOSTRAR SOLO DISPONIBLES
             ElevatedButton(
               onPressed: () {
                 _toggleAvailableFilter();
                 _filterTable(_filterController.text);
               },
               style: blackButton(),
-              child: Text(
-                _showOnlyAvailable ? "Mostrar todo" : "IP disponibles",
-              ),
+              child:
+                  Text(_showOnlyAvailable ? "Mostrar todo" : "IP disponibles"),
             ),
           ],
         ),
-
-        const SizedBox(height: 20),
-
-        // ==== TABLA ====
+        const SizedBox(height: 16),
         Expanded(
-          child: Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(8),
-            ),
+          child: SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
             child: SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: SingleChildScrollView(
                 child: DataTable(
-                  headingRowHeight: 48,
-                  dataRowHeight: 56,
-                  columnSpacing: 40,
-                  columns: _headers
-                      .map(
-                        (h) => DataColumn(
-                          label: Text(
-                            h,
-                            style: const TextStyle(
-                              fontWeight: FontWeight.bold,
-                              color: Colors.blue,
-                            ),
-                          ),
-                        ),
-                      )
-                      .toList(),
-                  rows: _filteredData.map(
-                    (row) {
-                      return DataRow(
-                        cells: _headers.map(
-                          (h) {
-                            return DataCell(
-                              SizedBox(
-                                width: 150,
-                                child: Text(
-                                  row[h] ?? "",
-                                  softWrap: true,
-                                ),
-                              ),
-                            );
-                          },
-                        ).toList(),
-                      );
-                    },
-                  ).toList(),
+              headingRowHeight: 48,
+              dataRowHeight: 56,
+              columnSpacing: 40,
+              columns: [
+                const DataColumn(
+                  label: Text(
+                    "Opciones",
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: Colors.blue,
+                    ),
+                  ),
                 ),
-              ),
-            ),
+                ..._headers.map(
+                  (h) => DataColumn(
+                    label: Text(
+                      h,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: Colors.blue,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+              rows: _filteredData.map((row) {
+                return DataRow(cells: [
+                  // === PRIMERA COLUMNA: BOTÓN EDITAR ===
+                  DataCell(
+                    IconButton(
+                      icon: const Icon(Icons.edit, color: Colors.black),
+                      onPressed: () => _editRow(row),
+                    ),
+                  ),
+
+                  // === RESTO DE COLUMNAS: DATOS ===
+                  ..._headers.map((h) {
+                    return DataCell(
+                      SizedBox(
+                        width: 150,
+                        child: Text(row[h] ?? ""),
+                      ),
+                    );
+                  }).toList(),
+                ]);
+              }).toList(),
+            )),
           ),
-        ),
+        )
       ],
     );
   }
