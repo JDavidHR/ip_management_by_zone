@@ -102,7 +102,7 @@ class TopHeader extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Text(
-            "Disponibilidad de IP",
+            "",
             style: TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.bold,

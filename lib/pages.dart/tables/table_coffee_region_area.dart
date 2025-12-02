@@ -1,6 +1,8 @@
+import 'dart:math';
 import 'package:excel/excel.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:mc_dashboard/core/colors.dart';
 
 class TableCoffeeRegionArea extends StatefulWidget {
   const TableCoffeeRegionArea({super.key});
@@ -63,6 +65,10 @@ class _TableCoffeeRegionAreaState extends State<TableCoffeeRegionArea> {
     });
   }
 
+  // ============================================================
+  //  FILTROS
+  // ============================================================
+
   void _filterTable(String query) {
     query = query.toLowerCase();
     List<Map<String, String>> baseList =
@@ -97,7 +103,11 @@ class _TableCoffeeRegionAreaState extends State<TableCoffeeRegionArea> {
     _filterTable(_filterController.text);
   }
 
-  void _showIpSummaryDialog() {
+  // ============================================================
+  //  ESTADÍSTICAS
+  // ============================================================
+
+  Map<String, int> _stats() {
     String clienteHeader = _headers.firstWhere(
       (h) => h.toLowerCase().contains("cliente"),
       orElse: () => "",
@@ -108,25 +118,106 @@ class _TableCoffeeRegionAreaState extends State<TableCoffeeRegionArea> {
         _data.where((row) => (row[clienteHeader] ?? "").trim().isEmpty).length;
     int ocupadas = total - disponibles;
 
+    return {
+      "total": total,
+      "disponibles": disponibles,
+      "ocupadas": ocupadas,
+    };
+  }
+
+  // ============================================================
+  //  DIÁLOGO CON GRÁFICO CIRCULAR
+  // ============================================================
+
+  void _showIpSummaryDialog() {
+    final stats = _stats();
+
+    double disponiblesPercent =
+        stats["total"]! == 0 ? 0 : stats["disponibles"]! / stats["total"]!;
+    double ocupadasPercent =
+        stats["total"]! == 0 ? 0 : stats["ocupadas"]! / stats["total"]!;
+
     showDialog(
       context: context,
       builder: (_) {
         return AlertDialog(
-          title: const Text("Resumen de IP"),
-          content: Text(
-            "IP totales: $total\n"
-            "IP disponibles: $disponibles\n"
-            "IP ocupadas: $ocupadas",
+          title: const Center(
+            child: Text("Estado de la tabla"),
+          ),
+          content: SizedBox(
+            width: 300,
+            height: 350,
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                // === GRÁFICO CIRCULAR ===
+                SizedBox(
+                  width: 200,
+                  height: 200,
+                  child: Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      CustomPaint(
+                        size: const Size(200, 200),
+                        painter: _PieChartPainter(
+                          disponiblesPercent,
+                          ocupadasPercent,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 20),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Container(
+                      color: MCPaletteColors.mcBlue,
+                      width: 10,
+                      height: 10,
+                    ),
+                    const SizedBox(
+                      width: 10,
+                      height: 10,
+                    ),
+                    Text("Disponible: ${stats["disponibles"]}  "
+                        "(${(disponiblesPercent * 100).toStringAsFixed(1)}%)"),
+                  ],
+                ),
+
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Container(
+                      color: MCPaletteColors.mcYellow,
+                      width: 10,
+                      height: 10,
+                    ),
+                    const SizedBox(
+                      width: 10,
+                      height: 10,
+                    ),
+                    Text("Ocupadas: ${stats["ocupadas"]}  "
+                        "(${(ocupadasPercent * 100).toStringAsFixed(1)}%)"),
+                  ],
+                ),
+              ],
+            ),
           ),
           actions: [
             TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text("Cerrar"))
+              onPressed: () => Navigator.pop(context),
+              child: const Text("Cerrar"),
+            ),
           ],
         );
       },
     );
   }
+
+  // ============================================================
+  //  ESTILO BOTONES NEGROS
+  // ============================================================
 
   ButtonStyle blackButton() {
     return ElevatedButton.styleFrom(
@@ -139,9 +230,10 @@ class _TableCoffeeRegionAreaState extends State<TableCoffeeRegionArea> {
     );
   }
 
-  // ===========================================================
-  //  *** DIALOGO PARA EDITAR UNA FILA ***
-  // ===========================================================
+  // ============================================================
+  //  DIALOGO PARA EDITAR
+  // ============================================================
+
   void _editRow(Map<String, String> row) {
     Map<String, TextEditingController> controllers = {};
 
@@ -189,7 +281,6 @@ class _TableCoffeeRegionAreaState extends State<TableCoffeeRegionArea> {
               child: const Text("Guardar"),
               onPressed: () {
                 setState(() {
-                  // Guardar los cambios en la fila original
                   for (var h in _headers) {
                     if (!(h.toLowerCase().contains("vlan") ||
                         h.toLowerCase().contains("dir. ip"))) {
@@ -207,9 +298,10 @@ class _TableCoffeeRegionAreaState extends State<TableCoffeeRegionArea> {
     );
   }
 
-  // ===========================================================
-  //  *** UI PRINCIPAL ***
-  // ===========================================================
+  // ============================================================
+  //  UI PRINCIPAL
+  // ============================================================
+
   @override
   Widget build(BuildContext context) {
     if (_isLoading) return const Center(child: CircularProgressIndicator());
@@ -236,7 +328,7 @@ class _TableCoffeeRegionAreaState extends State<TableCoffeeRegionArea> {
             ElevatedButton(
               onPressed: _showIpSummaryDialog,
               style: blackButton(),
-              child: const Text("Resumen IP"),
+              child: const Text("Estado de la tabla"),
             ),
             const SizedBox(width: 12),
             ElevatedButton(
@@ -245,67 +337,118 @@ class _TableCoffeeRegionAreaState extends State<TableCoffeeRegionArea> {
                 _filterTable(_filterController.text);
               },
               style: blackButton(),
-              child:
-                  Text(_showOnlyAvailable ? "Mostrar todo" : "IP disponibles"),
+              child: Text(
+                _showOnlyAvailable ? "Mostrar todo" : "IP disponibles",
+              ),
             ),
           ],
         ),
+
         const SizedBox(height: 16),
+
+        // ============================================================
+        //                   TABLA CON BOTÓN EDITAR
+        // ============================================================
+
         Expanded(
           child: SingleChildScrollView(
             scrollDirection: Axis.horizontal,
             child: SingleChildScrollView(
-                child: DataTable(
-              headingRowHeight: 48,
-              dataRowHeight: 56,
-              columnSpacing: 40,
-              columns: [
-                const DataColumn(
-                  label: Text(
-                    "Opciones",
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      color: Colors.blue,
-                    ),
-                  ),
-                ),
-                ..._headers.map(
-                  (h) => DataColumn(
+              child: DataTable(
+                headingRowHeight: 48,
+                dataRowHeight: 56,
+                columnSpacing: 40,
+                columns: [
+                  const DataColumn(
                     label: Text(
-                      h,
-                      style: const TextStyle(
+                      "Opciones",
+                      style: TextStyle(
                         fontWeight: FontWeight.bold,
                         color: Colors.blue,
                       ),
                     ),
                   ),
-                ),
-              ],
-              rows: _filteredData.map((row) {
-                return DataRow(cells: [
-                  // === PRIMERA COLUMNA: BOTÓN EDITAR ===
-                  DataCell(
-                    IconButton(
-                      icon: const Icon(Icons.edit, color: Colors.black),
-                      onPressed: () => _editRow(row),
+                  ..._headers.map(
+                    (h) => DataColumn(
+                      label: Text(
+                        h,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: Colors.blue,
+                        ),
+                      ),
                     ),
                   ),
-
-                  // === RESTO DE COLUMNAS: DATOS ===
-                  ..._headers.map((h) {
-                    return DataCell(
-                      SizedBox(
-                        width: 150,
-                        child: Text(row[h] ?? ""),
+                ],
+                rows: _filteredData.map((row) {
+                  return DataRow(cells: [
+                    DataCell(
+                      IconButton(
+                        icon: const Icon(Icons.edit, color: Colors.black),
+                        onPressed: () => _editRow(row),
                       ),
-                    );
-                  }).toList(),
-                ]);
-              }).toList(),
-            )),
+                    ),
+                    ..._headers.map((h) {
+                      return DataCell(
+                        SizedBox(
+                          width: 150,
+                          child: Text(row[h] ?? ""),
+                        ),
+                      );
+                    }).toList(),
+                  ]);
+                }).toList(),
+              ),
+            ),
           ),
-        )
+        ),
       ],
     );
   }
+}
+
+// ============================================================
+//   PAINTER PARA EL GRÁFICO CIRCULAR
+// ============================================================
+
+class _PieChartPainter extends CustomPainter {
+  final double disponibles;
+  final double ocupadas;
+
+  _PieChartPainter(this.disponibles, this.ocupadas);
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    Paint paint = Paint()..style = PaintingStyle.fill;
+
+    double radius = size.width / 2;
+    Offset center = Offset(radius, radius);
+
+    double startAngle = -pi / 2;
+
+    // Verde para disponibles
+    paint.color = MCPaletteColors.mcBlue;
+    double sweepDisp = disponibles * 2 * pi;
+    canvas.drawArc(
+      Rect.fromCircle(center: center, radius: radius),
+      startAngle,
+      sweepDisp,
+      true,
+      paint,
+    );
+
+    // Rojo para ocupadas
+    paint.color = MCPaletteColors.mcYellow;
+    double sweepOcc = ocupadas * 2 * pi;
+    canvas.drawArc(
+      Rect.fromCircle(center: center, radius: radius),
+      startAngle + sweepDisp,
+      sweepOcc,
+      true,
+      paint,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
 }

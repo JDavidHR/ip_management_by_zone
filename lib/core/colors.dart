@@ -9,4 +9,7 @@ class MCPaletteColors {
       Color(0xFF004C8C); // Azul oscuro para texto principal
   static const Color textSecondary =
       Color(0xFF0074A6); // Azul medio para texto secundario
+
+  static const mcBlue = Color(0xFF0054A6);
+  static const mcYellow = Color(0xFFF4C32F);
 }
