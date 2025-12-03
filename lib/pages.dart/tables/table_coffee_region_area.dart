@@ -18,9 +18,11 @@ class _TableCoffeeRegionAreaState extends State<TableCoffeeRegionArea> {
   bool _isLoading = true;
   bool _showOnlyAvailable = false;
 
+  List<String> _visibleColumns = [];
+
   final TextEditingController _filterController = TextEditingController();
 
-  // COLORES DEL GRÁFICO (Opción C)
+  // COLORES DE GRÁFICO (Opción C)
   final Color azul = const Color(0xFF1A73E8);
   final Color amarillo = const Color(0xFFF9AB00);
 
@@ -64,6 +66,7 @@ class _TableCoffeeRegionAreaState extends State<TableCoffeeRegionArea> {
     setState(() {
       _data = rows;
       _filteredData = rows;
+      _visibleColumns = List.from(_headers); // todas visibles por defecto
       _isLoading = false;
     });
   }
@@ -83,7 +86,6 @@ class _TableCoffeeRegionAreaState extends State<TableCoffeeRegionArea> {
     });
   }
 
-  // LISTA SOLO DISPONIBLES
   List<Map<String, String>> _onlyAvailableList() {
     String clienteHeader = _headers.firstWhere(
       (h) => h.toLowerCase().contains("cliente"),
@@ -104,10 +106,128 @@ class _TableCoffeeRegionAreaState extends State<TableCoffeeRegionArea> {
     _filterTable(_filterController.text);
   }
 
+  // AJUSTES DE COLUMNAS
+  void _openColumnSettings() {
+    showDialog(
+      context: context,
+      builder: (ctx) {
+        List<String> tempVisible = List.from(_visibleColumns);
+
+        return StatefulBuilder(
+          builder: (context, setStateDialog) {
+            return AlertDialog(
+              title: const Text("Ajustes de columnas"),
+              content: SizedBox(
+                width: 450,
+                child: SingleChildScrollView(
+                  child: Column(
+                    children: _headers.map((h) {
+                      bool isChecked = tempVisible.contains(h);
+
+                      return CheckboxListTile(
+                        title: Text(h),
+                        value: isChecked,
+                        onChanged: (value) {
+                          setStateDialog(() {
+                            if (value == true) {
+                              tempVisible.add(h);
+                            } else {
+                              tempVisible.remove(h);
+                            }
+                          });
+                        },
+                      );
+                    }).toList(),
+                  ),
+                ),
+              ),
+              actions: [
+                TextButton(
+                  child: const Text("Cancelar"),
+                  onPressed: () => Navigator.pop(context),
+                ),
+                ElevatedButton(
+                  child: const Text("Aplicar"),
+                  onPressed: () {
+                    setState(() => _visibleColumns = List.from(tempVisible));
+                    Navigator.pop(context);
+                  },
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  // ================================================================
+  //                 *** DIÁLOGO EDITAR FILA ***
+  // ================================================================
+  void _editRow(Map<String, String> row) {
+    Map<String, TextEditingController> controllers = {
+      for (var h in _headers) h: TextEditingController(text: row[h] ?? "")
+    };
+
+    List<String> camposBloqueados = ["VLAN", "Dir. IP Admon"];
+
+    showDialog(
+      context: context,
+      builder: (ctx) {
+        return AlertDialog(
+          title: const Text("Editar fila"),
+          content: SizedBox(
+            width: 450,
+            height: 500,
+            child: SingleChildScrollView(
+              child: Column(
+                children: _headers.map((h) {
+                  bool disabled = camposBloqueados.contains(h);
+
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 14),
+                    child: TextField(
+                      controller: controllers[h],
+                      enabled: !disabled,
+                      decoration: InputDecoration(
+                        labelText: h,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        filled: disabled,
+                        fillColor: Colors.grey.shade200,
+                      ),
+                    ),
+                  );
+                }).toList(),
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              child: const Text("Cancelar"),
+              onPressed: () => Navigator.pop(context),
+            ),
+            ElevatedButton(
+              child: const Text("Guardar"),
+              onPressed: () {
+                setState(() {
+                  for (var h in _headers) {
+                    row[h] = controllers[h]!.text;
+                  }
+                });
+                Navigator.pop(context);
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   // ================================================================
   //                 *** DIÁLOGO STATUS IP ***
   // ================================================================
-
   void _showIpSummaryDialog() {
     String clienteHeader = _headers.firstWhere(
       (h) => h.toLowerCase().contains("cliente"),
@@ -129,12 +249,7 @@ class _TableCoffeeRegionAreaState extends State<TableCoffeeRegionArea> {
           title: const Center(
             child: Text(
               "Status IP",
-              style: TextStyle(
-                color: Colors.black,
-                fontSize: 16,
-                height: 1.3,
-                fontWeight: FontWeight.bold,
-              ),
+              style: TextStyle(fontWeight: FontWeight.bold),
             ),
           ),
           content: SizedBox(
@@ -151,30 +266,24 @@ class _TableCoffeeRegionAreaState extends State<TableCoffeeRegionArea> {
                     amarillo: amarillo,
                   ),
                 ),
-
                 const SizedBox(height: 16),
-
-                // ===========================
-                //      LEYENDAS CON %
-                // ===========================
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        _legendItem(azul,
-                            "Disponibles: $disponibles (${pDisp.toStringAsFixed(1)}%)"),
-                      ],
-                    ),
-                    const SizedBox(height: 10),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        _legendItem(amarillo,
-                            "Ocupadas: $ocupadas (${pOcc.toStringAsFixed(1)}%)"),
-                      ],
-                    ),
+                    _legendItem(
+                        azul,
+                        "Disponibles: $disponibles "
+                        "(${pDisp.toStringAsFixed(1)}%)"),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    _legendItem(
+                        amarillo,
+                        "Ocupadas: $ocupadas "
+                        "(${pOcc.toStringAsFixed(1)}%)"),
                   ],
                 ),
               ],
@@ -182,8 +291,8 @@ class _TableCoffeeRegionAreaState extends State<TableCoffeeRegionArea> {
           ),
           actions: [
             TextButton(
-              onPressed: () => Navigator.pop(context),
               child: const Text("Cerrar"),
+              onPressed: () => Navigator.pop(context),
             ),
           ],
         );
@@ -197,10 +306,7 @@ class _TableCoffeeRegionAreaState extends State<TableCoffeeRegionArea> {
         Container(
           width: 14,
           height: 14,
-          decoration: BoxDecoration(
-            color: color,
-            shape: BoxShape.circle,
-          ),
+          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
         ),
         const SizedBox(width: 6),
         Text(text),
@@ -208,87 +314,17 @@ class _TableCoffeeRegionAreaState extends State<TableCoffeeRegionArea> {
     );
   }
 
-  // BOTÓN NEGRO
   ButtonStyle blackButton() {
     return ElevatedButton.styleFrom(
       backgroundColor: Colors.black,
       foregroundColor: Colors.white,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(8),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
     );
   }
 
   // ================================================================
-  //                 *** DIÁLOGO EDITAR FILA ***
-  // ================================================================
-  void _editRow(Map<String, String> row) {
-    Map<String, TextEditingController> controllers = {};
-
-    for (var header in _headers) {
-      controllers[header] = TextEditingController(text: row[header]);
-    }
-
-    showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text("Editar registro"),
-          content: SizedBox(
-            width: 500,
-            child: SingleChildScrollView(
-              child: Column(
-                children: _headers.map((h) {
-                  bool disabled = h.toLowerCase().contains("vlan") ||
-                      h.toLowerCase().contains("dir. ip");
-
-                  return Padding(
-                    padding: const EdgeInsets.only(bottom: 12),
-                    child: TextField(
-                      controller: controllers[h],
-                      enabled: !disabled,
-                      decoration: InputDecoration(
-                        labelText: h,
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                      ),
-                    ),
-                  );
-                }).toList(),
-              ),
-            ),
-          ),
-          actions: [
-            TextButton(
-              child: const Text("Cancelar"),
-              onPressed: () => Navigator.pop(context),
-            ),
-            ElevatedButton(
-              style: blackButton(),
-              child: const Text("Guardar"),
-              onPressed: () {
-                setState(() {
-                  for (var h in _headers) {
-                    if (!(h.toLowerCase().contains("vlan") ||
-                        h.toLowerCase().contains("dir. ip"))) {
-                      row[h] = controllers[h]!.text;
-                    }
-                  }
-                });
-
-                Navigator.pop(context);
-              },
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  // ================================================================
-  //                   *** INTERFAZ PRINCIPAL ***
+  //                        *** UI PRINCIPAL ***
   // ================================================================
   @override
   Widget build(BuildContext context) {
@@ -297,7 +333,6 @@ class _TableCoffeeRegionAreaState extends State<TableCoffeeRegionArea> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // BUSCADOR Y BOTONES
         Row(
           children: [
             SizedBox(
@@ -327,16 +362,18 @@ class _TableCoffeeRegionAreaState extends State<TableCoffeeRegionArea> {
                 _filterTable(_filterController.text);
               },
               style: blackButton(),
-              child: Text(
-                _showOnlyAvailable ? "Mostrar todo" : "IP disponibles",
-              ),
+              child:
+                  Text(_showOnlyAvailable ? "Mostrar todo" : "IP disponibles"),
+            ),
+            const SizedBox(width: 12),
+            ElevatedButton(
+              onPressed: _openColumnSettings,
+              style: blackButton(),
+              child: const Text("Ajustes de tabla"),
             ),
           ],
         ),
-
         const SizedBox(height: 16),
-
-        // TABLA
         Expanded(
           child: Container(
             decoration: BoxDecoration(
@@ -356,44 +393,24 @@ class _TableCoffeeRegionAreaState extends State<TableCoffeeRegionArea> {
                 scrollDirection: Axis.horizontal,
                 child: SingleChildScrollView(
                   child: DataTable(
-                    headingRowHeight: 48,
-                    dataRowHeight: 56,
-                    columnSpacing: 36,
-                    dividerThickness: 0, // QUITA LÍNEAS
-                    //color de la cabecera de la tabla
-                    // headingRowColor: MaterialStateProperty.all(
-                    //   Colors.grey.shade200,
-                    // ),
                     columns: [
                       const DataColumn(
                         label: Text(
                           "Opciones",
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            color: Colors.black87,
-                          ),
+                          style: TextStyle(fontWeight: FontWeight.bold),
                         ),
                       ),
-                      ..._headers.map(
+                      ..._visibleColumns.map(
                         (h) => DataColumn(
                           label: Text(
                             h,
-                            style: const TextStyle(
-                              fontWeight: FontWeight.bold,
-                              color: Colors.black87,
-                            ),
+                            style: const TextStyle(fontWeight: FontWeight.bold),
                           ),
                         ),
                       ),
                     ],
                     rows: _filteredData.map((row) {
                       return DataRow(
-                        color: MaterialStateProperty.resolveWith((states) {
-                          if (states.contains(MaterialState.hovered)) {
-                            return Colors.grey.shade100;
-                          }
-                          return Colors.white;
-                        }),
                         cells: [
                           DataCell(
                             IconButton(
@@ -401,7 +418,7 @@ class _TableCoffeeRegionAreaState extends State<TableCoffeeRegionArea> {
                               onPressed: () => _editRow(row),
                             ),
                           ),
-                          ..._headers.map((h) {
+                          ..._visibleColumns.map((h) {
                             return DataCell(
                               SizedBox(
                                 width: 150,
@@ -423,9 +440,9 @@ class _TableCoffeeRegionAreaState extends State<TableCoffeeRegionArea> {
   }
 }
 
-// =====================================================================
-//                       *** PINTOR DEL GRÁFICO ***
-// =====================================================================
+// ================================================================
+//                         PINTOR GRÁFICO
+// ================================================================
 class _CircularChartPainter extends CustomPainter {
   final int disponibles;
   final int ocupadas;
@@ -462,7 +479,6 @@ class _CircularChartPainter extends CustomPainter {
       ..strokeWidth = 30
       ..strokeCap = StrokeCap.round;
 
-    // Arco disponibles
     canvas.drawArc(
       Rect.fromCircle(center: center, radius: radius),
       -pi / 2,
@@ -471,7 +487,6 @@ class _CircularChartPainter extends CustomPainter {
       paintDisponible,
     );
 
-    // Arco ocupadas
     canvas.drawArc(
       Rect.fromCircle(center: center, radius: radius),
       -pi / 2 + angleDisponible,
@@ -479,8 +494,6 @@ class _CircularChartPainter extends CustomPainter {
       false,
       paintOcupadas,
     );
-
-    // TEXTO CENTRO
 
     TextPainter tp = TextPainter(
       text: TextSpan(
