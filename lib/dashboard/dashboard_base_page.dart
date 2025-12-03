@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
-import 'package:mc_dashboard/core/colors.dart';
 import 'package:mc_dashboard/pages.dart/tables/table_coffee_region_area.dart';
 
 class DashboardBasePage extends StatefulWidget {
@@ -57,7 +56,7 @@ class _DashboardBasePageState extends State<DashboardBasePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: MCPaletteColors.background,
+      backgroundColor: Colors.grey.shade100,
       body: Row(
         children: [
           BarLeft(onItemSelected: _onMenuItemSelected),
@@ -87,14 +86,20 @@ class TopHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       height: 60,
+      margin: const EdgeInsets.only(
+        left: 16,
+        right: 16,
+        top: 16,
+      ),
       padding: const EdgeInsets.symmetric(horizontal: 20),
       decoration: BoxDecoration(
         color: const Color.fromARGB(255, 31, 31, 31),
+        borderRadius: BorderRadius.circular(8), // 🔥 Bordes redondeados
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 6,
-            offset: const Offset(0, 2),
+            color: Colors.black.withOpacity(0.07),
+            blurRadius: 12,
+            offset: const Offset(0, 3),
           ),
         ],
       ),
@@ -111,19 +116,14 @@ class TopHeader extends StatelessWidget {
           ),
           Row(
             children: [
-              IconButton(
-                onPressed: null,
-                icon: const Icon(
-                  LucideIcons.bell,
-                  color: Colors.white,
-                ),
+              Icon(
+                LucideIcons.bell,
+                color: Colors.white,
               ),
-              IconButton(
-                onPressed: null,
-                icon: const Icon(
-                  LucideIcons.settings,
-                  color: Colors.white,
-                ),
+              SizedBox(width: 12),
+              Icon(
+                LucideIcons.settings,
+                color: Colors.white,
               ),
             ],
           )
@@ -150,11 +150,24 @@ class _BarLeftState extends State<BarLeft> {
     return AnimatedContainer(
       duration: const Duration(milliseconds: 250),
       width: _isCollapsed ? 70 : 250,
-      color: const Color.fromARGB(255, 31, 31, 31),
+      margin: const EdgeInsets.only(left: 16, top: 16, bottom: 16),
+      decoration: BoxDecoration(
+        color: const Color.fromARGB(255, 31, 31, 31),
+        borderRadius: BorderRadius.circular(8), // 🔥 Bordes redondeados
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.08),
+            blurRadius: 14,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
       child: Column(
         children: [
           // === LOGO ===
           DrawerHeader(
+            margin: EdgeInsets.zero,
+            padding: EdgeInsets.zero,
             child: Center(
               child: _isCollapsed
                   ? const Icon(
@@ -164,13 +177,12 @@ class _BarLeftState extends State<BarLeft> {
                     )
                   : Image.asset(
                       'assets/logos/MC_logo.png',
-                      width: 160,
-                      fit: BoxFit.contain,
+                      width: 140,
                     ),
             ),
           ),
 
-          // === MENÚS ===
+          // === MENÚ ===
           Expanded(
             child: ListView(
               children: [
@@ -178,13 +190,12 @@ class _BarLeftState extends State<BarLeft> {
                 _buildMenuItem('Medellín', LucideIcons.tableCellsMerge),
                 _buildMenuItem('Bogotá', LucideIcons.tableCellsMerge),
 
-                // === BOTÓN DE EXPANDIR / COLAPSAR ===
-                Container(
+                const SizedBox(height: 10),
+
+                // === BOTÓN COLAPSAR ===
+                Align(
                   alignment: Alignment.centerRight,
-                  padding: const EdgeInsets.only(right: 8, top: 8),
                   child: IconButton(
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(),
                     icon: Icon(
                       _isCollapsed
                           ? LucideIcons.chevronRight
@@ -192,9 +203,7 @@ class _BarLeftState extends State<BarLeft> {
                       color: Colors.white,
                     ),
                     onPressed: () {
-                      setState(() {
-                        _isCollapsed = !_isCollapsed;
-                      });
+                      setState(() => _isCollapsed = !_isCollapsed);
                     },
                   ),
                 ),
@@ -209,6 +218,7 @@ class _BarLeftState extends State<BarLeft> {
   Widget _buildMenuItem(String title, IconData icon) {
     return InkWell(
       onTap: () => widget.onItemSelected(title),
+      borderRadius: BorderRadius.circular(8),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         child: Row(

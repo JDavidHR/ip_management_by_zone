@@ -1,8 +1,7 @@
-import 'dart:math';
 import 'package:excel/excel.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:mc_dashboard/core/colors.dart';
+import 'dart:math';
 
 class TableCoffeeRegionArea extends StatefulWidget {
   const TableCoffeeRegionArea({super.key});
@@ -20,6 +19,10 @@ class _TableCoffeeRegionAreaState extends State<TableCoffeeRegionArea> {
   bool _showOnlyAvailable = false;
 
   final TextEditingController _filterController = TextEditingController();
+
+  // COLORES DEL GRÁFICO (Opción C)
+  final Color azul = const Color(0xFF1A73E8);
+  final Color amarillo = const Color(0xFFF9AB00);
 
   @override
   void initState() {
@@ -65,10 +68,7 @@ class _TableCoffeeRegionAreaState extends State<TableCoffeeRegionArea> {
     });
   }
 
-  // ============================================================
-  //  FILTROS
-  // ============================================================
-
+  // FILTRO
   void _filterTable(String query) {
     query = query.toLowerCase();
     List<Map<String, String>> baseList =
@@ -83,6 +83,7 @@ class _TableCoffeeRegionAreaState extends State<TableCoffeeRegionArea> {
     });
   }
 
+  // LISTA SOLO DISPONIBLES
   List<Map<String, String>> _onlyAvailableList() {
     String clienteHeader = _headers.firstWhere(
       (h) => h.toLowerCase().contains("cliente"),
@@ -103,11 +104,11 @@ class _TableCoffeeRegionAreaState extends State<TableCoffeeRegionArea> {
     _filterTable(_filterController.text);
   }
 
-  // ============================================================
-  //  ESTADÍSTICAS
-  // ============================================================
+  // ================================================================
+  //                 *** DIÁLOGO STATUS IP ***
+  // ================================================================
 
-  Map<String, int> _stats() {
+  void _showIpSummaryDialog() {
     String clienteHeader = _headers.firstWhere(
       (h) => h.toLowerCase().contains("cliente"),
       orElse: () => "",
@@ -118,87 +119,62 @@ class _TableCoffeeRegionAreaState extends State<TableCoffeeRegionArea> {
         _data.where((row) => (row[clienteHeader] ?? "").trim().isEmpty).length;
     int ocupadas = total - disponibles;
 
-    return {
-      "total": total,
-      "disponibles": disponibles,
-      "ocupadas": ocupadas,
-    };
-  }
-
-  // ============================================================
-  //  DIÁLOGO CON GRÁFICO CIRCULAR
-  // ============================================================
-
-  void _showIpSummaryDialog() {
-    final stats = _stats();
-
-    double disponiblesPercent =
-        stats["total"]! == 0 ? 0 : stats["disponibles"]! / stats["total"]!;
-    double ocupadasPercent =
-        stats["total"]! == 0 ? 0 : stats["ocupadas"]! / stats["total"]!;
+    double pDisp = total == 0 ? 0 : (disponibles / total) * 100;
+    double pOcc = total == 0 ? 0 : (ocupadas / total) * 100;
 
     showDialog(
       context: context,
       builder: (_) {
         return AlertDialog(
           title: const Center(
-            child: Text("Estado de la tabla"),
+            child: Text(
+              "Status IP",
+              style: TextStyle(
+                color: Colors.black,
+                fontSize: 16,
+                height: 1.3,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
           ),
           content: SizedBox(
-            width: 300,
-            height: 350,
+            width: 400,
+            height: 300,
             child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                // === GRÁFICO CIRCULAR ===
-                SizedBox(
-                  width: 200,
-                  height: 200,
-                  child: Stack(
-                    alignment: Alignment.center,
-                    children: [
-                      CustomPaint(
-                        size: const Size(200, 200),
-                        painter: _PieChartPainter(
-                          disponiblesPercent,
-                          ocupadasPercent,
-                        ),
-                      ),
-                    ],
+                CustomPaint(
+                  size: const Size(220, 220),
+                  painter: _CircularChartPainter(
+                    disponibles: disponibles,
+                    ocupadas: ocupadas,
+                    azul: azul,
+                    amarillo: amarillo,
                   ),
                 ),
-                const SizedBox(height: 20),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Container(
-                      color: MCPaletteColors.mcBlue,
-                      width: 10,
-                      height: 10,
-                    ),
-                    const SizedBox(
-                      width: 10,
-                      height: 10,
-                    ),
-                    Text("Disponible: ${stats["disponibles"]}  "
-                        "(${(disponiblesPercent * 100).toStringAsFixed(1)}%)"),
-                  ],
-                ),
 
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
+                const SizedBox(height: 16),
+
+                // ===========================
+                //      LEYENDAS CON %
+                // ===========================
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Container(
-                      color: MCPaletteColors.mcYellow,
-                      width: 10,
-                      height: 10,
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        _legendItem(azul,
+                            "Disponibles: $disponibles (${pDisp.toStringAsFixed(1)}%)"),
+                      ],
                     ),
-                    const SizedBox(
-                      width: 10,
-                      height: 10,
+                    const SizedBox(height: 10),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        _legendItem(amarillo,
+                            "Ocupadas: $ocupadas (${pOcc.toStringAsFixed(1)}%)"),
+                      ],
                     ),
-                    Text("Ocupadas: ${stats["ocupadas"]}  "
-                        "(${(ocupadasPercent * 100).toStringAsFixed(1)}%)"),
                   ],
                 ),
               ],
@@ -215,10 +191,24 @@ class _TableCoffeeRegionAreaState extends State<TableCoffeeRegionArea> {
     );
   }
 
-  // ============================================================
-  //  ESTILO BOTONES NEGROS
-  // ============================================================
+  Widget _legendItem(Color color, String text) {
+    return Row(
+      children: [
+        Container(
+          width: 14,
+          height: 14,
+          decoration: BoxDecoration(
+            color: color,
+            shape: BoxShape.circle,
+          ),
+        ),
+        const SizedBox(width: 6),
+        Text(text),
+      ],
+    );
+  }
 
+  // BOTÓN NEGRO
   ButtonStyle blackButton() {
     return ElevatedButton.styleFrom(
       backgroundColor: Colors.black,
@@ -230,10 +220,9 @@ class _TableCoffeeRegionAreaState extends State<TableCoffeeRegionArea> {
     );
   }
 
-  // ============================================================
-  //  DIALOGO PARA EDITAR
-  // ============================================================
-
+  // ================================================================
+  //                 *** DIÁLOGO EDITAR FILA ***
+  // ================================================================
   void _editRow(Map<String, String> row) {
     Map<String, TextEditingController> controllers = {};
 
@@ -298,10 +287,9 @@ class _TableCoffeeRegionAreaState extends State<TableCoffeeRegionArea> {
     );
   }
 
-  // ============================================================
-  //  UI PRINCIPAL
-  // ============================================================
-
+  // ================================================================
+  //                   *** INTERFAZ PRINCIPAL ***
+  // ================================================================
   @override
   Widget build(BuildContext context) {
     if (_isLoading) return const Center(child: CircularProgressIndicator());
@@ -309,6 +297,7 @@ class _TableCoffeeRegionAreaState extends State<TableCoffeeRegionArea> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        // BUSCADOR Y BOTONES
         Row(
           children: [
             SizedBox(
@@ -319,7 +308,8 @@ class _TableCoffeeRegionAreaState extends State<TableCoffeeRegionArea> {
                   hintText: "Buscar...",
                   prefixIcon: const Icon(Icons.search),
                   border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8)),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
                 ),
                 onChanged: _filterTable,
               ),
@@ -328,7 +318,7 @@ class _TableCoffeeRegionAreaState extends State<TableCoffeeRegionArea> {
             ElevatedButton(
               onPressed: _showIpSummaryDialog,
               style: blackButton(),
-              child: const Text("Estado de la tabla"),
+              child: const Text("Status IP"),
             ),
             const SizedBox(width: 12),
             ElevatedButton(
@@ -346,58 +336,84 @@ class _TableCoffeeRegionAreaState extends State<TableCoffeeRegionArea> {
 
         const SizedBox(height: 16),
 
-        // ============================================================
-        //                   TABLA CON BOTÓN EDITAR
-        // ============================================================
-
+        // TABLA
         Expanded(
-          child: SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: SingleChildScrollView(
-              child: DataTable(
-                headingRowHeight: 48,
-                dataRowHeight: 56,
-                columnSpacing: 40,
-                columns: [
-                  const DataColumn(
-                    label: Text(
-                      "Opciones",
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        color: Colors.blue,
-                      ),
-                    ),
-                  ),
-                  ..._headers.map(
-                    (h) => DataColumn(
-                      label: Text(
-                        h,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          color: Colors.blue,
+          child: Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              boxShadow: const [
+                BoxShadow(
+                  blurRadius: 12,
+                  color: Colors.black12,
+                  offset: Offset(0, 3),
+                ),
+              ],
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: SingleChildScrollView(
+                  child: DataTable(
+                    headingRowHeight: 48,
+                    dataRowHeight: 56,
+                    columnSpacing: 36,
+                    dividerThickness: 0, // QUITA LÍNEAS
+                    //color de la cabecera de la tabla
+                    // headingRowColor: MaterialStateProperty.all(
+                    //   Colors.grey.shade200,
+                    // ),
+                    columns: [
+                      const DataColumn(
+                        label: Text(
+                          "Opciones",
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: Colors.black87,
+                          ),
                         ),
                       ),
-                    ),
-                  ),
-                ],
-                rows: _filteredData.map((row) {
-                  return DataRow(cells: [
-                    DataCell(
-                      IconButton(
-                        icon: const Icon(Icons.edit, color: Colors.black),
-                        onPressed: () => _editRow(row),
-                      ),
-                    ),
-                    ..._headers.map((h) {
-                      return DataCell(
-                        SizedBox(
-                          width: 150,
-                          child: Text(row[h] ?? ""),
+                      ..._headers.map(
+                        (h) => DataColumn(
+                          label: Text(
+                            h,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: Colors.black87,
+                            ),
+                          ),
                         ),
+                      ),
+                    ],
+                    rows: _filteredData.map((row) {
+                      return DataRow(
+                        color: MaterialStateProperty.resolveWith((states) {
+                          if (states.contains(MaterialState.hovered)) {
+                            return Colors.grey.shade100;
+                          }
+                          return Colors.white;
+                        }),
+                        cells: [
+                          DataCell(
+                            IconButton(
+                              icon: const Icon(Icons.edit, color: Colors.black),
+                              onPressed: () => _editRow(row),
+                            ),
+                          ),
+                          ..._headers.map((h) {
+                            return DataCell(
+                              SizedBox(
+                                width: 150,
+                                child: Text(row[h] ?? ""),
+                              ),
+                            );
+                          }).toList(),
+                        ],
                       );
                     }).toList(),
-                  ]);
-                }).toList(),
+                  ),
+                ),
               ),
             ),
           ),
@@ -407,45 +423,83 @@ class _TableCoffeeRegionAreaState extends State<TableCoffeeRegionArea> {
   }
 }
 
-// ============================================================
-//   PAINTER PARA EL GRÁFICO CIRCULAR
-// ============================================================
+// =====================================================================
+//                       *** PINTOR DEL GRÁFICO ***
+// =====================================================================
+class _CircularChartPainter extends CustomPainter {
+  final int disponibles;
+  final int ocupadas;
+  final Color azul;
+  final Color amarillo;
 
-class _PieChartPainter extends CustomPainter {
-  final double disponibles;
-  final double ocupadas;
-
-  _PieChartPainter(this.disponibles, this.ocupadas);
+  _CircularChartPainter({
+    required this.disponibles,
+    required this.ocupadas,
+    required this.azul,
+    required this.amarillo,
+  });
 
   @override
   void paint(Canvas canvas, Size size) {
-    Paint paint = Paint()..style = PaintingStyle.fill;
+    double total = (disponibles + ocupadas).toDouble();
+    if (total == 0) return;
 
-    double radius = size.width / 2;
-    Offset center = Offset(radius, radius);
+    double angleDisponible = (disponibles / total) * 2 * pi;
+    double angleOcupadas = (ocupadas / total) * 2 * pi;
 
-    double startAngle = -pi / 2;
+    final center = Offset(size.width / 2, size.height / 2);
+    final radius = size.width * 0.40;
 
-    // Verde para disponibles
-    paint.color = MCPaletteColors.mcBlue;
-    double sweepDisp = disponibles * 2 * pi;
+    final paintDisponible = Paint()
+      ..color = azul
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 30
+      ..strokeCap = StrokeCap.round;
+
+    final paintOcupadas = Paint()
+      ..color = amarillo
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 30
+      ..strokeCap = StrokeCap.round;
+
+    // Arco disponibles
     canvas.drawArc(
       Rect.fromCircle(center: center, radius: radius),
-      startAngle,
-      sweepDisp,
-      true,
-      paint,
+      -pi / 2,
+      angleDisponible,
+      false,
+      paintDisponible,
     );
 
-    // Rojo para ocupadas
-    paint.color = MCPaletteColors.mcYellow;
-    double sweepOcc = ocupadas * 2 * pi;
+    // Arco ocupadas
     canvas.drawArc(
       Rect.fromCircle(center: center, radius: radius),
-      startAngle + sweepDisp,
-      sweepOcc,
-      true,
-      paint,
+      -pi / 2 + angleDisponible,
+      angleOcupadas,
+      false,
+      paintOcupadas,
+    );
+
+    // TEXTO CENTRO
+
+    TextPainter tp = TextPainter(
+      text: TextSpan(
+        text: "Total de IP: $total",
+        style: const TextStyle(
+          color: Colors.black,
+          fontSize: 16,
+          height: 1.3,
+          fontWeight: FontWeight.bold,
+        ),
+      ),
+      textAlign: TextAlign.center,
+      textDirection: TextDirection.ltr,
+    );
+
+    tp.layout();
+    tp.paint(
+      canvas,
+      Offset(center.dx - tp.width / 2, center.dy - tp.height / 2),
     );
   }
 
